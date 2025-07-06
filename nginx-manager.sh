@@ -75,21 +75,22 @@ check_nginx() {
 # Mostrar menú principal
 show_menu() {
     echo -e "${WHITE}🛠️  Opciones Disponibles:${NC}"
-    echo -e "   ${YELLOW}1.${NC} Crear nuevo sitio web"
-    echo -e "   ${YELLOW}2.${NC} Listar sitios web"
-    echo -e "   ${YELLOW}3.${NC} Habilitar sitio web"
-    echo -e "   ${YELLOW}4.${NC} Deshabilitar sitio web"
-    echo -e "   ${YELLOW}5.${NC} Eliminar sitio web"
-    echo -e "   ${YELLOW}6.${NC} Ver configuración de sitio"
-    echo -e "   ${YELLOW}7.${NC} Editar configuración de sitio"
-    echo -e "   ${YELLOW}8.${NC} Verificar configuración nginx"
-    echo -e "   ${YELLOW}9.${NC} Recargar nginx"
-    echo -e "   ${YELLOW}10.${NC} Ver estado de nginx"
-    echo -e "   ${YELLOW}11.${NC} Ver logs de acceso"
-    echo -e "   ${YELLOW}12.${NC} Ver logs de errores"
-    echo -e "   ${YELLOW}13.${NC} Optimizar rendimiento"
-    echo -e "   ${YELLOW}14.${NC} Habilitar PHP para sitio"
-    echo -e "   ${YELLOW}15.${NC} Crear sitio con SSL"
+    echo -e "   ${YELLOW}1.${NC} Crear nuevo sitio web (por dominio)"
+    echo -e "   ${YELLOW}2.${NC} Crear nuevo sitio web (por puerto)"
+    echo -e "   ${YELLOW}3.${NC} Listar sitios web"
+    echo -e "   ${YELLOW}4.${NC} Habilitar sitio web"
+    echo -e "   ${YELLOW}5.${NC} Deshabilitar sitio web"
+    echo -e "   ${YELLOW}6.${NC} Eliminar sitio web"
+    echo -e "   ${YELLOW}7.${NC} Ver configuración de sitio"
+    echo -e "   ${YELLOW}8.${NC} Editar configuración de sitio"
+    echo -e "   ${YELLOW}9.${NC} Verificar configuración nginx"
+    echo -e "   ${YELLOW}10.${NC} Recargar nginx"
+    echo -e "   ${YELLOW}11.${NC} Ver estado de nginx"
+    echo -e "   ${YELLOW}12.${NC} Ver logs de acceso"
+    echo -e "   ${YELLOW}13.${NC} Ver logs de errores"
+    echo -e "   ${YELLOW}14.${NC} Optimizar rendimiento"
+    echo -e "   ${YELLOW}15.${NC} Habilitar PHP para sitio"
+    echo -e "   ${YELLOW}16.${NC} Crear sitio con SSL"
     echo -e "   ${YELLOW}0.${NC} Salir"
     echo
 }
@@ -285,7 +286,297 @@ EOF
     fi
 }
 
-# Listar sitios web
+# Crear sitio web por puerto - ¡Mucho más fácil pana!
+create_site_by_port() {
+    log_step "Creando sitio web por puerto..."
+    
+    # Obtener el siguiente puerto disponible automáticamente
+    get_next_port() {
+        local start_port=8080
+        local current_port=$start_port
+        
+        # Buscar puertos ya en uso en nginx
+        while netstat -tuln 2>/dev/null | grep -q ":$current_port " || \
+              grep -r "listen.*$current_port" /etc/nginx/sites-* 2>/dev/null | grep -q .; do
+            current_port=$((current_port + 1))
+            # Evitar puertos reservados del sistema
+            if [ $current_port -gt 9000 ]; then
+                log_error "No se encontró un puerto disponible"
+                return 1
+            fi
+        done
+        
+        echo $current_port
+    }
+    
+    # Obtener el siguiente puerto disponible
+    PORT=$(get_next_port)
+    if [ -z "$PORT" ]; then
+        log_error "No se pudo obtener un puerto disponible"
+        return 1
+    fi
+    
+    # Solicitar nombre del sitio (opcional)
+    read -p "Nombre del sitio (opcional, por defecto: site-$PORT): " SITE_NAME
+    
+    if [ -z "$SITE_NAME" ]; then
+        SITE_NAME="site-$PORT"
+    fi
+    
+    # Verificar si el sitio ya existe
+    if [ -f "$NGINX_SITES_AVAILABLE/$SITE_NAME" ]; then
+        log_error "El sitio $SITE_NAME ya existe"
+        return 1
+    fi
+    
+    # Crear directorio del sitio
+    mkdir -p "$WEB_ROOT/$SITE_NAME"
+    
+    # Crear página de ejemplo con info del puerto
+    cat > "$WEB_ROOT/$SITE_NAME/index.html" << EOF
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>$SITE_NAME - Puerto $PORT</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+        }
+        
+        .container {
+            max-width: 700px;
+            padding: 3rem;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        
+        .logo {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+        }
+        
+        .port-info {
+            font-size: 2rem;
+            color: #ffd700;
+            margin: 1rem 0;
+            background: rgba(255, 215, 0, 0.2);
+            padding: 1rem;
+            border-radius: 15px;
+            border: 2px solid #ffd700;
+        }
+        
+        .site-name {
+            font-size: 1.5rem;
+            color: #87ceeb;
+            margin-bottom: 2rem;
+        }
+        
+        .status {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: #28a745;
+            color: white;
+            border-radius: 25px;
+            font-weight: bold;
+            margin: 1rem 0;
+        }
+        
+        .access-info {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 1.5rem;
+            border-radius: 15px;
+            margin: 2rem 0;
+            border-left: 4px solid #ffd700;
+        }
+        
+        .access-info h3 {
+            color: #ffd700;
+            margin-bottom: 1rem;
+        }
+        
+        .access-url {
+            font-family: 'Courier New', monospace;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            margin: 0.5rem 0;
+            font-size: 1.1rem;
+        }
+        
+        .footer {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.2);
+            opacity: 0.8;
+        }
+        
+        .flag {
+            font-size: 1.5rem;
+            margin: 0 0.5rem;
+        }
+        
+        .port-badge {
+            display: inline-block;
+            background: #ff6b6b;
+            color: white;
+            padding: 0.3rem 0.8rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            margin: 0 0.5rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">🚀</div>
+        <h1>¡Sitio Web Activo!</h1>
+        
+        <div class="port-info">
+            <strong>Puerto: $PORT</strong>
+        </div>
+        
+        <div class="site-name">$SITE_NAME</div>
+        
+        <div class="status">✅ FUNCIONANDO</div>
+        
+        <div class="access-info">
+            <h3>🌐 Cómo acceder:</h3>
+            <div class="access-url">http://IP_DEL_SERVIDOR:$PORT</div>
+            <div class="access-url">http://localhost:$PORT</div>
+            <p style="margin-top: 1rem; font-size: 0.9rem; opacity: 0.8;">
+                Reemplaza "IP_DEL_SERVIDOR" con la IP real de tu servidor
+            </p>
+        </div>
+        
+        <p>Tu sitio web está correctamente configurado y escuchando en el puerto <span class="port-badge">$PORT</span></p>
+        <p>Puedes comenzar a subir tu contenido al directorio:</p>
+        <p><strong>/var/www/$SITE_NAME</strong></p>
+        
+        <div class="footer">
+            <p>🎯 Gestión por puertos - ¡Fácil y directo!</p>
+            <p>Desarrollado con ❤️ para la comunidad de Proxmox</p>
+            <p>Hecho en <span class="flag">🇵🇷</span> Puerto Rico con mucho <span class="flag">☕</span> café</p>
+        </div>
+    </div>
+</body>
+</html>
+EOF
+    
+    # Crear configuración del sitio por puerto
+    cat > "$NGINX_SITES_AVAILABLE/$SITE_NAME" << EOF
+# Configuración para $SITE_NAME (Puerto $PORT)
+# Creado automáticamente por nginx-manager
+# Sitio accesible en: http://IP_SERVIDOR:$PORT
+
+server {
+    listen $PORT;
+    listen [::]:$PORT;
+    
+    # No necesitamos server_name específico para sitios por puerto
+    server_name _;
+    
+    root $WEB_ROOT/$SITE_NAME;
+    index index.html index.htm index.php;
+    
+    # Configuración principal
+    location / {
+        try_files \$uri \$uri/ =404;
+    }
+    
+    # Configuración para archivos PHP (si está instalado)
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/var/run/php/php8.1-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+        include fastcgi_params;
+    }
+    
+    # Configuración para archivos estáticos
+    location ~* \.(jpg|jpeg|png|gif|ico|css|js|pdf|txt|tar|gz|zip|mp4|webm|ogg|mp3|wav|flac|aac|woff|woff2|ttf|eot|svg)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+        access_log off;
+        log_not_found off;
+    }
+    
+    # Denegar acceso a archivos ocultos
+    location ~ /\. {
+        deny all;
+        access_log off;
+        log_not_found off;
+    }
+    
+    # Logs específicos del sitio
+    access_log /var/log/nginx/${SITE_NAME}_port${PORT}_access.log main;
+    error_log /var/log/nginx/${SITE_NAME}_port${PORT}_error.log warn;
+    
+    # Headers de seguridad
+    add_header X-Frame-Options "SAMEORIGIN" always;
+    add_header X-XSS-Protection "1; mode=block" always;
+    add_header X-Content-Type-Options "nosniff" always;
+    add_header X-Served-By "Nginx-Server-Proxmox-Port-$PORT" always;
+    add_header X-Port "$PORT" always;
+}
+EOF
+    
+    # Configurar permisos
+    chown -R www-data:www-data "$WEB_ROOT/$SITE_NAME"
+    chmod -R 755 "$WEB_ROOT/$SITE_NAME"
+    
+    # Habilitar el sitio
+    ln -s "$NGINX_SITES_AVAILABLE/$SITE_NAME" "$NGINX_SITES_ENABLED/$SITE_NAME"
+    
+    # Verificar configuración
+    if nginx -t &>/dev/null; then
+        systemctl reload nginx
+        log_success "Sitio $SITE_NAME creado y habilitado exitosamente"
+        log_info "Puerto: $PORT"
+        log_info "Directorio: $WEB_ROOT/$SITE_NAME"
+        log_info "Configuración: $NGINX_SITES_AVAILABLE/$SITE_NAME"
+        echo
+        log_info "🌐 Accede a tu sitio en:"
+        log_info "   http://$(hostname -I | awk '{print $1}'):$PORT"
+        log_info "   http://localhost:$PORT (desde el servidor)"
+    else
+        log_error "Error en la configuración de nginx"
+        rm -f "$NGINX_SITES_ENABLED/$SITE_NAME"
+        return 1
+    fi
+}
+
+# Listar sitios web - Ahora con info de puertos, ¡qué brutal!
 list_sites() {
     log_step "Listando sitios web..."
     
@@ -294,10 +585,27 @@ list_sites() {
         for site in "$NGINX_SITES_AVAILABLE"/*; do
             if [ -f "$site" ]; then
                 sitename=$(basename "$site")
+                
+                # Extraer información del puerto si existe
+                port_info=""
+                if grep -q "listen.*[0-9]\{4,5\}" "$site"; then
+                    port=$(grep "listen.*[0-9]\{4,5\}" "$site" | head -1 | grep -o '[0-9]\{4,5\}' | head -1)
+                    port_info=" ${CYAN}(Puerto: $port)${NC}"
+                fi
+                
+                # Extraer información del dominio si existe
+                domain_info=""
+                if grep -q "server_name.*[a-zA-Z]" "$site"; then
+                    domain=$(grep "server_name" "$site" | head -1 | awk '{print $2}' | sed 's/;//')
+                    if [ "$domain" != "_" ]; then
+                        domain_info=" ${BLUE}(Dominio: $domain)${NC}"
+                    fi
+                fi
+                
                 if [ -L "$NGINX_SITES_ENABLED/$sitename" ]; then
-                    echo -e "   ${GREEN}✓${NC} $sitename (habilitado)"
+                    echo -e "   ${GREEN}✓${NC} $sitename${port_info}${domain_info} ${GREEN}(habilitado)${NC}"
                 else
-                    echo -e "   ${RED}✗${NC} $sitename (deshabilitado)"
+                    echo -e "   ${RED}✗${NC} $sitename${port_info}${domain_info} ${RED}(deshabilitado)${NC}"
                 fi
             fi
         done
@@ -306,17 +614,42 @@ list_sites() {
     fi
     
     echo
-    echo -e "${WHITE}🌐 Sitios Habilitados:${NC}"
+    echo -e "${WHITE}🌐 Sitios Activos:${NC}"
     if [ -d "$NGINX_SITES_ENABLED" ] && [ "$(ls -A $NGINX_SITES_ENABLED)" ]; then
         for site in "$NGINX_SITES_ENABLED"/*; do
             if [ -L "$site" ]; then
                 sitename=$(basename "$site")
-                echo -e "   ${GREEN}●${NC} $sitename"
+                site_config="$NGINX_SITES_AVAILABLE/$sitename"
+                
+                # Obtener información de acceso
+                access_info=""
+                if [ -f "$site_config" ]; then
+                    if grep -q "listen.*[0-9]\{4,5\}" "$site_config"; then
+                        port=$(grep "listen.*[0-9]\{4,5\}" "$site_config" | head -1 | grep -o '[0-9]\{4,5\}' | head -1)
+                        server_ip=$(hostname -I | awk '{print $1}')
+                        access_info=" ${CYAN}→ http://$server_ip:$port${NC}"
+                    elif grep -q "server_name.*[a-zA-Z]" "$site_config"; then
+                        domain=$(grep "server_name" "$site_config" | head -1 | awk '{print $2}' | sed 's/;//')
+                        if [ "$domain" != "_" ]; then
+                            access_info=" ${CYAN}→ http://$domain${NC}"
+                        fi
+                    fi
+                fi
+                
+                echo -e "   ${GREEN}●${NC} $sitename$access_info"
             fi
         done
     else
         echo -e "   ${YELLOW}No hay sitios habilitados${NC}"
     fi
+    
+    echo
+    echo -e "${WHITE}📊 Resumen:${NC}"
+    total_sites=$(ls -1 "$NGINX_SITES_AVAILABLE" 2>/dev/null | wc -l)
+    enabled_sites=$(ls -1 "$NGINX_SITES_ENABLED" 2>/dev/null | wc -l)
+    echo -e "   Total de sitios: ${YELLOW}$total_sites${NC}"
+    echo -e "   Sitios habilitados: ${GREEN}$enabled_sites${NC}"
+    echo -e "   Sitios deshabilitados: ${RED}$((total_sites - enabled_sites))${NC}"
 }
 
 # Habilitar sitio web
@@ -675,6 +1008,9 @@ main() {
             "create-site")
                 create_site
                 ;;
+            "create-site-port")
+                create_site_by_port
+                ;;
             "list-sites")
                 list_sites
                 ;;
@@ -698,7 +1034,7 @@ main() {
                 ;;
             *)
                 log_error "Comando desconocido: $1"
-                echo "Comandos disponibles: create-site, list-sites, enable-site, disable-site, remove-site, status, reload, test"
+                echo "Comandos disponibles: create-site, create-site-port, list-sites, enable-site, disable-site, remove-site, status, reload, test"
                 exit 1
                 ;;
         esac
@@ -717,45 +1053,48 @@ main() {
                 create_site
                 ;;
             2)
-                list_sites
+                create_site_by_port
                 ;;
             3)
-                enable_site
+                list_sites
                 ;;
             4)
-                disable_site
+                enable_site
                 ;;
             5)
-                remove_site
+                disable_site
                 ;;
             6)
-                view_site_config
+                remove_site
                 ;;
             7)
-                echo "Función de edición no implementada aún"
+                view_site_config
                 ;;
             8)
-                test_nginx_config
+                echo "Función de edición no implementada aún"
                 ;;
             9)
-                reload_nginx
+                test_nginx_config
                 ;;
             10)
-                nginx_status
+                reload_nginx
                 ;;
             11)
-                view_access_logs
+                nginx_status
                 ;;
             12)
-                view_error_logs
+                view_access_logs
                 ;;
             13)
-                echo "Función de optimización no implementada aún"
+                view_error_logs
                 ;;
             14)
-                echo "Función de PHP no implementada aún"
+                echo "Función de optimización no implementada aún"
                 ;;
             15)
+                echo "Función de PHP no implementada aún"
+                ;;
+            16)
                 echo "Función de SSL no implementada aún (usar ssl-manager)"
                 ;;
             0)
