@@ -113,16 +113,25 @@ detect_templates() {
 get_next_vmid() {
     log_step "Obteniendo ID de contenedor disponible..."
     
+    # Obtener lista de IDs existentes (contenedores y VMs)
+    EXISTING_IDS=$(pvesh get /cluster/resources --type vm --output-format json | jq -r '.[].vmid' 2>/dev/null)
+    
+    # Si jq no está disponible, usar método alternativo
+    if [ -z "$EXISTING_IDS" ]; then
+        EXISTING_IDS=$(pct list | awk 'NR>1 {print $1}'; qm list | awk 'NR>1 {print $1}')
+    fi
+    
     # Buscar el próximo ID disponible
     for i in {100..999}; do
-        if ! pct status $i &>/dev/null; then
+        if ! echo "$EXISTING_IDS" | grep -q "^$i$"; then
             CONTAINER_ID=$i
             break
         fi
     done
     
     if [ -z "$CONTAINER_ID" ]; then
-        log_error "No se pudo encontrar un ID de contenedor disponible"
+        log_error "No se pudo encontrar un ID de contenedor disponible (100-999)"
+        log_info "IDs existentes: $(echo $EXISTING_IDS | tr '\n' ' ')"
         exit 1
     fi
     
