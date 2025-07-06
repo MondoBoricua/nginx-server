@@ -113,17 +113,36 @@ detect_templates() {
 get_next_vmid() {
     log_step "Obteniendo ID de contenedor disponible..."
     
-    # Obtener lista de IDs existentes (contenedores y VMs)
-    EXISTING_IDS=$(pvesh get /cluster/resources --type vm --output-format json | jq -r '.[].vmid' 2>/dev/null)
+    # Obtener lista de IDs existentes usando múltiples métodos
+    EXISTING_IDS=""
     
-    # Si jq no está disponible, usar método alternativo
-    if [ -z "$EXISTING_IDS" ]; then
-        EXISTING_IDS=$(pct list | awk 'NR>1 {print $1}'; qm list | awk 'NR>1 {print $1}')
+    # Método 1: pct list (contenedores)
+    if command -v pct &> /dev/null; then
+        PCT_IDS=$(pct list 2>/dev/null | awk 'NR>1 {print $1}' | grep -E '^[0-9]+$' || true)
+        EXISTING_IDS="$EXISTING_IDS $PCT_IDS"
     fi
     
+    # Método 2: qm list (VMs)
+    if command -v qm &> /dev/null; then
+        QM_IDS=$(qm list 2>/dev/null | awk 'NR>1 {print $1}' | grep -E '^[0-9]+$' || true)
+        EXISTING_IDS="$EXISTING_IDS $QM_IDS"
+    fi
+    
+    # Método 3: pvesh (si está disponible)
+    if command -v pvesh &> /dev/null; then
+        PVESH_IDS=$(pvesh get /cluster/resources --type vm 2>/dev/null | awk 'NR>1 {print $2}' | grep -E '^[0-9]+$' || true)
+        EXISTING_IDS="$EXISTING_IDS $PVESH_IDS"
+    fi
+    
+    # Limpiar y ordenar IDs
+    EXISTING_IDS=$(echo $EXISTING_IDS | tr ' ' '\n' | sort -nu | tr '\n' ' ')
+    
+    log_info "IDs existentes encontrados: $EXISTING_IDS"
+    
     # Buscar el próximo ID disponible
+    CONTAINER_ID=""
     for i in {100..999}; do
-        if ! echo "$EXISTING_IDS" | grep -q "^$i$"; then
+        if ! echo " $EXISTING_IDS " | grep -q " $i "; then
             CONTAINER_ID=$i
             break
         fi
@@ -131,7 +150,7 @@ get_next_vmid() {
     
     if [ -z "$CONTAINER_ID" ]; then
         log_error "No se pudo encontrar un ID de contenedor disponible (100-999)"
-        log_info "IDs existentes: $(echo $EXISTING_IDS | tr '\n' ' ')"
+        log_error "IDs existentes: $EXISTING_IDS"
         exit 1
     fi
     
