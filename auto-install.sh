@@ -557,6 +557,12 @@ install_management_tools() {
     pct exec $CONTAINER_ID -- chmod +x /tmp/install-tools.sh
     pct exec $CONTAINER_ID -- /tmp/install-tools.sh
     
+    # Ejecutar corrección automática de nginx
+    log_info "Ejecutando corrección automática de nginx..."
+    pct exec $CONTAINER_ID -- wget -O /tmp/nginx-fix.sh https://raw.githubusercontent.com/MondoBoricua/nginx-server/master/utils/nginx-fix.sh
+    pct exec $CONTAINER_ID -- chmod +x /tmp/nginx-fix.sh
+    pct exec $CONTAINER_ID -- /tmp/nginx-fix.sh
+    
     if [ $? -eq 0 ]; then
         log_success "Herramientas de gestión instaladas correctamente"
     else
