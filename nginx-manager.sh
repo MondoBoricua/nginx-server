@@ -558,17 +558,37 @@ EOF
     # Habilitar el sitio
     ln -s "$NGINX_SITES_AVAILABLE/$SITE_NAME" "$NGINX_SITES_ENABLED/$SITE_NAME"
     
+    # Abrir puerto en firewall automáticamente
+    if command -v ufw &> /dev/null; then
+        ufw_status=$(ufw status 2>/dev/null | head -1)
+        if echo "$ufw_status" | grep -q "active"; then
+            log_info "Abriendo puerto $PORT en firewall..."
+            ufw allow $PORT/tcp
+            log_success "Puerto $PORT permitido en firewall"
+        fi
+    fi
+    
     # Verificar configuración
     if nginx -t &>/dev/null; then
-        systemctl reload nginx
-        log_success "Sitio $SITE_NAME creado y habilitado exitosamente"
-        log_info "Puerto: $PORT"
-        log_info "Directorio: $WEB_ROOT/$SITE_NAME"
-        log_info "Configuración: $NGINX_SITES_AVAILABLE/$SITE_NAME"
-        echo
-        log_info "🌐 Accede a tu sitio en:"
-        log_info "   http://$(hostname -I | awk '{print $1}'):$PORT"
-        log_info "   http://localhost:$PORT (desde el servidor)"
+        # Usar restart en lugar de reload para asegurar que los puertos se abran
+        log_info "Reiniciando nginx para aplicar cambios..."
+        systemctl restart nginx
+        sleep 2
+        
+        # Verificar que el puerto esté activo
+        if netstat -tuln | grep -q ":$PORT "; then
+            log_success "Sitio $SITE_NAME creado y habilitado exitosamente"
+            log_info "Puerto: $PORT"
+            log_info "Directorio: $WEB_ROOT/$SITE_NAME"
+            log_info "Configuración: $NGINX_SITES_AVAILABLE/$SITE_NAME"
+            echo
+            log_info "🌐 Accede a tu sitio en:"
+            log_info "   http://$(hostname -I | awk '{print $1}'):$PORT"
+            log_info "   http://localhost:$PORT (desde el servidor)"
+        else
+            log_warning "Sitio creado pero puerto $PORT no está respondiendo"
+            log_info "Intenta: systemctl restart nginx && ufw allow $PORT/tcp"
+        fi
     else
         log_error "Error en la configuración de nginx"
         rm -f "$NGINX_SITES_ENABLED/$SITE_NAME"
