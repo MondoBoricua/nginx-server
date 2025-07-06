@@ -550,11 +550,23 @@ EOF
 install_management_tools() {
     log_step "Instalando herramientas de gestión..."
     
-    # Descargar scripts de gestión desde GitHub (simulado - crear localmente)
-    pct exec $CONTAINER_ID -- mkdir -p /opt/nginx-server
+    # Ejecutar el instalador de herramientas dentro del contenedor
+    log_info "Descargando e instalando herramientas desde GitHub..."
     
-    # Crear script de bienvenida
-    cat > /tmp/welcome.sh << 'EOF'
+    pct exec $CONTAINER_ID -- wget -O /tmp/install-tools.sh https://raw.githubusercontent.com/MondoBoricua/nginx-server/master/install-tools.sh
+    pct exec $CONTAINER_ID -- chmod +x /tmp/install-tools.sh
+    pct exec $CONTAINER_ID -- /tmp/install-tools.sh
+    
+    if [ $? -eq 0 ]; then
+        log_success "Herramientas de gestión instaladas correctamente"
+    else
+        log_warning "Error en instalación de herramientas, instalando versión básica..."
+        
+        # Fallback: instalar versión básica
+        pct exec $CONTAINER_ID -- mkdir -p /opt/nginx-server
+        
+        # Crear script de bienvenida básico
+        cat > /tmp/welcome.sh << 'EOF'
 #!/bin/bash
 # Script de bienvenida para nginx-server
 
@@ -631,14 +643,15 @@ echo -e "${PURPLE}Hecho en 🇵🇷 Puerto Rico con mucho ☕ café${NC}"
 echo
 EOF
 
-    # Copiar script de bienvenida
-    pct push $CONTAINER_ID /tmp/welcome.sh /opt/nginx-server/welcome.sh
-    pct exec $CONTAINER_ID -- chmod +x /opt/nginx-server/welcome.sh
+        # Copiar script de bienvenida
+        pct push $CONTAINER_ID /tmp/welcome.sh /opt/nginx-server/welcome.sh
+        pct exec $CONTAINER_ID -- chmod +x /opt/nginx-server/welcome.sh
+        
+        # Limpiar archivos temporales
+        rm -f /tmp/welcome.sh
+    fi
     
-    log_success "Herramientas de gestión instaladas"
-    
-    # Limpiar archivos temporales
-    rm -f /tmp/welcome.sh
+    log_success "Herramientas de gestión configuradas"
 }
 
 # Obtener información del contenedor
