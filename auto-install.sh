@@ -1,8 +1,12 @@
 #!/bin/bash
 
-# 🌐 Nginx Web Server - Instalador Automático para Proxmox LXC
-# Desarrollado con ❤️ para la comunidad de Proxmox
-# Hecho en 🇵🇷 Puerto Rico con mucho ☕ café
+# Nginx Web Server - Instalador Automatico para Proxmox LXC
+# Desarrollado para la comunidad de Proxmox
+# Hecho en Puerto Rico
+
+# Silenciar warnings de locale
+export LC_ALL=C
+export LANG=C
 
 # Colores para output
 RED='\033[0;31m'
@@ -12,106 +16,291 @@ BLUE='\033[0;34m'
 PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
 WHITE='\033[1;37m'
+BOLD='\033[1m'
 NC='\033[0m' # No Color
 
-# Banner de bienvenida
+# =============================================================================
+# FUNCIONES DE UTILIDAD
+# =============================================================================
+
+show_info() { echo -e "${BLUE}[INFO]${NC} $1"; }
+show_success() { echo -e "${GREEN}[OK]${NC} $1"; }
+show_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+show_warning() { echo -e "${YELLOW}[WARN]${NC} $1"; }
+show_step_msg() { echo -e "${PURPLE}[STEP]${NC} $1"; }
+
+show_step() {
+    echo ""
+    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${WHITE}  $1${NC}"
+    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+}
+
+read_input() {
+    local prompt="$1"
+    local default="$2"
+    local var_name="$3"
+    local required="$4"
+
+    if [ -n "$default" ]; then
+        echo -ne "${GREEN}>${NC} $prompt ${CYAN}[$default]${NC}: "
+    else
+        echo -ne "${GREEN}>${NC} $prompt: "
+    fi
+
+    read user_input
+
+    if [ -z "$user_input" ] && [ -n "$default" ]; then
+        eval "$var_name='$default'"
+    elif [ -z "$user_input" ] && [ "$required" = "true" ]; then
+        show_error "$TXT_REQUIRED"
+        read_input "$prompt" "$default" "$var_name" "$required"
+    else
+        eval "$var_name='$user_input'"
+    fi
+}
+
+# =============================================================================
+# SELECCION DE IDIOMA
+# =============================================================================
+
+select_language() {
+    clear
+    echo -e "${CYAN}"
+    echo "=============================================================="
+    echo "           NGINX WEB SERVER - PROXMOX LXC INSTALLER           "
+    echo "=============================================================="
+    echo -e "${NC}"
+    echo ""
+    echo "Select language / Selecciona idioma:"
+    echo ""
+    echo "   1) English"
+    echo "   2) Espanol"
+    echo ""
+    echo -ne "${GREEN}>${NC} Option/Opcion [1]: "
+    read LANG_CHOICE
+    LANG_CHOICE=${LANG_CHOICE:-1}
+
+    if [[ "$LANG_CHOICE" == "2" ]]; then
+        set_spanish
+    else
+        set_english
+    fi
+}
+
+set_english() {
+    TXT_STEP1="STEP 1/4: Verifying Environment"
+    TXT_STEP2="STEP 2/4: Container Configuration"
+    TXT_STEP3="STEP 3/4: Resources and Network"
+    TXT_STEP4="STEP 4/4: Confirmation"
+    TXT_VERIFYING_PROXMOX="Verifying Proxmox environment..."
+    TXT_PROXMOX_OK="Proxmox environment verified"
+    TXT_NOT_PROXMOX="This script must be run on a Proxmox VE server"
+    TXT_CMD_NOT_FOUND="Command not found"
+    TXT_DETECTING_TEMPLATES="Detecting available LXC templates..."
+    TXT_TEMPLATE_FOUND="Template found"
+    TXT_DOWNLOADING_TEMPLATE="Downloading template..."
+    TXT_TEMPLATE_DOWNLOADED="Template downloaded"
+    TXT_NO_TEMPLATES="No compatible templates found (Ubuntu 22.04 or Debian 12)"
+    TXT_GETTING_ID="Getting available container ID..."
+    TXT_EXISTING_IDS="Existing IDs found"
+    TXT_ID_ASSIGNED="Container ID assigned"
+    TXT_NO_ID_AVAILABLE="No available container ID found (100-999)"
+    TXT_CONTAINER_CONFIG="Container Configuration"
+    TXT_CONTAINER_ID="Container ID"
+    TXT_CONTAINER_NAME="Container Name"
+    TXT_ROOT_PASSWORD="Root Password"
+    TXT_MEMORY="Memory (MB)"
+    TXT_DISK="Disk (GB)"
+    TXT_CPU_CORES="CPU Cores"
+    TXT_STORAGE="Storage"
+    TXT_NETWORK_BRIDGE="Network Bridge"
+    TXT_REQUIRED="This field is required"
+    TXT_PASSWORD_SHORT="Password must be at least 5 characters (Proxmox requirement)"
+    TXT_AVAILABLE_STORAGES="Available storages:"
+    TXT_AVAILABLE_BRIDGES="Available network bridges:"
+    TXT_CONFIRM_TITLE="Configuration Summary"
+    TXT_CONFIRM_CONTINUE="Continue with installation?"
+    TXT_CONFIRM_YES="Y/n"
+    TXT_CANCELLED="Installation cancelled"
+    TXT_CREATING_CONTAINER="Creating LXC container..."
+    TXT_CONTAINER_CREATED="Container created successfully"
+    TXT_CONTAINER_ERROR="Error creating container"
+    TXT_WAITING_START="Waiting for container to start..."
+    TXT_CONTAINER_STARTED="Container started successfully"
+    TXT_CONTAINER_NOT_STARTED="Container could not start"
+    TXT_INSTALLING_NGINX="Installing and configuring Nginx..."
+    TXT_NGINX_INSTALLED="Nginx installed and configured"
+    TXT_NGINX_ERROR="Error during Nginx installation"
+    TXT_INSTALLING_TOOLS="Installing management tools..."
+    TXT_TOOLS_INSTALLED="Management tools installed"
+    TXT_TOOLS_ERROR="Error installing tools, installing basic version..."
+    TXT_GETTING_INFO="Getting container information..."
+    TXT_INFO_OBTAINED="Container information obtained"
+    TXT_IP_NOT_FOUND="Could not get container IP"
+    TXT_INSTALL_COMPLETE="INSTALLATION COMPLETED!"
+    TXT_SUMMARY="Installation Summary"
+    TXT_WEB_ACCESS="Web Server Access"
+    TXT_CONTAINER_ACCESS="Container Access"
+    TXT_PROXMOX_CONSOLE="Proxmox Console"
+    TXT_NEXT_STEPS="Next Steps"
+    TXT_DOCUMENTATION="Documentation"
+    TXT_THANKS="Thank you for using nginx-server!"
+    TXT_DEVELOPED="Developed for the Proxmox community"
+    TXT_MADE_IN="Made in Puerto Rico"
+    TXT_FEATURES="Features"
+    TXT_AUTOBOOT="Autoboot enabled"
+    TXT_AUTOLOGIN="Autologin configured"
+    TXT_SERVICE_RUNNING="Service running"
+}
+
+set_spanish() {
+    TXT_STEP1="PASO 1/4: Verificando Entorno"
+    TXT_STEP2="PASO 2/4: Configuracion del Contenedor"
+    TXT_STEP3="PASO 3/4: Recursos y Red"
+    TXT_STEP4="PASO 4/4: Confirmacion"
+    TXT_VERIFYING_PROXMOX="Verificando entorno Proxmox..."
+    TXT_PROXMOX_OK="Entorno Proxmox verificado"
+    TXT_NOT_PROXMOX="Este script debe ejecutarse en un servidor Proxmox VE"
+    TXT_CMD_NOT_FOUND="Comando no encontrado"
+    TXT_DETECTING_TEMPLATES="Detectando templates LXC disponibles..."
+    TXT_TEMPLATE_FOUND="Template encontrado"
+    TXT_DOWNLOADING_TEMPLATE="Descargando template..."
+    TXT_TEMPLATE_DOWNLOADED="Template descargado"
+    TXT_NO_TEMPLATES="No se encontraron templates compatibles (Ubuntu 22.04 o Debian 12)"
+    TXT_GETTING_ID="Obteniendo ID de contenedor disponible..."
+    TXT_EXISTING_IDS="IDs existentes encontrados"
+    TXT_ID_ASSIGNED="ID de contenedor asignado"
+    TXT_NO_ID_AVAILABLE="No se encontro ID de contenedor disponible (100-999)"
+    TXT_CONTAINER_CONFIG="Configuracion del Contenedor"
+    TXT_CONTAINER_ID="ID del Contenedor"
+    TXT_CONTAINER_NAME="Nombre del Contenedor"
+    TXT_ROOT_PASSWORD="Contrasena Root"
+    TXT_MEMORY="Memoria (MB)"
+    TXT_DISK="Disco (GB)"
+    TXT_CPU_CORES="Nucleos CPU"
+    TXT_STORAGE="Almacenamiento"
+    TXT_NETWORK_BRIDGE="Bridge de Red"
+    TXT_REQUIRED="Este campo es obligatorio"
+    TXT_PASSWORD_SHORT="La contrasena debe tener al menos 5 caracteres (requisito de Proxmox)"
+    TXT_AVAILABLE_STORAGES="Almacenamientos disponibles:"
+    TXT_AVAILABLE_BRIDGES="Bridges de red disponibles:"
+    TXT_CONFIRM_TITLE="Resumen de Configuracion"
+    TXT_CONFIRM_CONTINUE="Continuar con la instalacion?"
+    TXT_CONFIRM_YES="S/n"
+    TXT_CANCELLED="Instalacion cancelada"
+    TXT_CREATING_CONTAINER="Creando contenedor LXC..."
+    TXT_CONTAINER_CREATED="Contenedor creado exitosamente"
+    TXT_CONTAINER_ERROR="Error al crear el contenedor"
+    TXT_WAITING_START="Esperando a que el contenedor inicie..."
+    TXT_CONTAINER_STARTED="Contenedor iniciado correctamente"
+    TXT_CONTAINER_NOT_STARTED="El contenedor no pudo iniciarse"
+    TXT_INSTALLING_NGINX="Instalando y configurando Nginx..."
+    TXT_NGINX_INSTALLED="Nginx instalado y configurado"
+    TXT_NGINX_ERROR="Error durante la instalacion de Nginx"
+    TXT_INSTALLING_TOOLS="Instalando herramientas de gestion..."
+    TXT_TOOLS_INSTALLED="Herramientas de gestion instaladas"
+    TXT_TOOLS_ERROR="Error instalando herramientas, instalando version basica..."
+    TXT_GETTING_INFO="Obteniendo informacion del contenedor..."
+    TXT_INFO_OBTAINED="Informacion del contenedor obtenida"
+    TXT_IP_NOT_FOUND="No se pudo obtener la IP del contenedor"
+    TXT_INSTALL_COMPLETE="INSTALACION COMPLETADA!"
+    TXT_SUMMARY="Resumen de la Instalacion"
+    TXT_WEB_ACCESS="Acceso al Servidor Web"
+    TXT_CONTAINER_ACCESS="Acceso al Contenedor"
+    TXT_PROXMOX_CONSOLE="Consola Proxmox"
+    TXT_NEXT_STEPS="Proximos Pasos"
+    TXT_DOCUMENTATION="Documentacion"
+    TXT_THANKS="Gracias por usar nginx-server!"
+    TXT_DEVELOPED="Desarrollado para la comunidad de Proxmox"
+    TXT_MADE_IN="Hecho en Puerto Rico"
+    TXT_FEATURES="Caracteristicas"
+    TXT_AUTOBOOT="Autoarranque habilitado"
+    TXT_AUTOLOGIN="Autologin configurado"
+    TXT_SERVICE_RUNNING="Servicio funcionando"
+}
+
+# =============================================================================
+# BANNER DE BIENVENIDA
+# =============================================================================
+
 show_banner() {
     clear
     echo -e "${CYAN}"
-    echo "╔══════════════════════════════════════════════════════════════╗"
-    echo "║                                                              ║"
-    echo "║            🌐 NGINX WEB SERVER - PROXMOX LXC 🌐              ║"
-    echo "║                                                              ║"
-    echo "║              Instalador Automático v1.0                     ║"
-    echo "║                                                              ║"
-    echo "║     Desarrollado con ❤️  para la comunidad de Proxmox       ║"
-    echo "║           Hecho en 🇵🇷 Puerto Rico con mucho ☕ café        ║"
-    echo "║                                                              ║"
-    echo "╚══════════════════════════════════════════════════════════════╝"
+    echo "=================================================================="
+    echo "||                                                              ||"
+    echo "||            NGINX WEB SERVER - PROXMOX LXC                    ||"
+    echo "||                                                              ||"
+    echo "||                  Automatic Installer v2.0                    ||"
+    echo "||                                                              ||"
+    echo "||              $TXT_DEVELOPED              ||"
+    echo "||                   $TXT_MADE_IN                    ||"
+    echo "||                                                              ||"
+    echo "=================================================================="
     echo -e "${NC}"
 }
 
-# Función para mostrar mensajes con colores
-log_info() {
-    echo -e "${CYAN}[INFO]${NC} $1"
-}
+# =============================================================================
+# VERIFICACIONES
+# =============================================================================
 
-log_success() {
-    echo -e "${GREEN}[✓]${NC} $1"
-}
-
-log_warning() {
-    echo -e "${YELLOW}[⚠]${NC} $1"
-}
-
-log_error() {
-    echo -e "${RED}[✗]${NC} $1"
-}
-
-log_step() {
-    echo -e "${PURPLE}[PASO]${NC} $1"
-}
-
-# Verificar si estamos en Proxmox
 check_proxmox() {
-    log_step "Verificando entorno Proxmox..."
-    
+    show_step_msg "$TXT_VERIFYING_PROXMOX"
+
     if ! command -v pct &> /dev/null; then
-        log_error "Este script debe ejecutarse en un servidor Proxmox VE"
-        log_error "No se encontró el comando 'pct'"
+        show_error "$TXT_NOT_PROXMOX"
+        show_error "'pct' - $TXT_CMD_NOT_FOUND"
         exit 1
     fi
-    
+
     if ! command -v pvesh &> /dev/null; then
-        log_error "Este script debe ejecutarse en un servidor Proxmox VE"
-        log_error "No se encontró el comando 'pvesh'"
+        show_error "$TXT_NOT_PROXMOX"
+        show_error "'pvesh' - $TXT_CMD_NOT_FOUND"
         exit 1
     fi
-    
-    log_success "Entorno Proxmox verificado correctamente"
+
+    show_success "$TXT_PROXMOX_OK"
 }
 
-# Detectar templates disponibles
 detect_templates() {
-    log_step "Detectando templates LXC disponibles..."
-    
-    # Buscar templates de Ubuntu 22.04 y Debian 12
+    show_step_msg "$TXT_DETECTING_TEMPLATES"
+
     UBUNTU_TEMPLATE=$(pveam available | grep "ubuntu-22.04" | head -1 | awk '{print $2}')
     DEBIAN_TEMPLATE=$(pveam available | grep "debian-12" | head -1 | awk '{print $2}')
-    
-    # Verificar templates ya descargados
+
     DOWNLOADED_UBUNTU=$(pveam list local | grep "ubuntu-22.04" | head -1 | awk '{print $1}')
     DOWNLOADED_DEBIAN=$(pveam list local | grep "debian-12" | head -1 | awk '{print $1}')
-    
+
     if [ -n "$DOWNLOADED_UBUNTU" ]; then
         SELECTED_TEMPLATE="$DOWNLOADED_UBUNTU"
         TEMPLATE_TYPE="ubuntu"
-        log_success "Template Ubuntu 22.04 encontrado: $SELECTED_TEMPLATE"
+        show_success "$TXT_TEMPLATE_FOUND: Ubuntu 22.04"
     elif [ -n "$DOWNLOADED_DEBIAN" ]; then
         SELECTED_TEMPLATE="$DOWNLOADED_DEBIAN"
         TEMPLATE_TYPE="debian"
-        log_success "Template Debian 12 encontrado: $SELECTED_TEMPLATE"
+        show_success "$TXT_TEMPLATE_FOUND: Debian 12"
     elif [ -n "$UBUNTU_TEMPLATE" ]; then
         SELECTED_TEMPLATE="$UBUNTU_TEMPLATE"
         TEMPLATE_TYPE="ubuntu"
-        log_info "Descargando template Ubuntu 22.04..."
+        show_info "$TXT_DOWNLOADING_TEMPLATE Ubuntu 22.04..."
         pveam download local "$UBUNTU_TEMPLATE"
-        log_success "Template Ubuntu 22.04 descargado"
+        show_success "$TXT_TEMPLATE_DOWNLOADED: Ubuntu 22.04"
     elif [ -n "$DEBIAN_TEMPLATE" ]; then
         SELECTED_TEMPLATE="$DEBIAN_TEMPLATE"
         TEMPLATE_TYPE="debian"
-        log_info "Descargando template Debian 12..."
+        show_info "$TXT_DOWNLOADING_TEMPLATE Debian 12..."
         pveam download local "$DEBIAN_TEMPLATE"
-        log_success "Template Debian 12 descargado"
+        show_success "$TXT_TEMPLATE_DOWNLOADED: Debian 12"
     else
-        log_error "No se encontraron templates compatibles (Ubuntu 22.04 o Debian 12)"
+        show_error "$TXT_NO_TEMPLATES"
         exit 1
     fi
 }
 
 # Obtener siguiente ID disponible
 get_next_vmid() {
-    log_step "Obteniendo ID de contenedor disponible..."
+    show_step_msg "$TXT_GETTING_ID"
     
     # Obtener lista de IDs existentes usando múltiples métodos
     EXISTING_IDS=""
@@ -137,7 +326,7 @@ get_next_vmid() {
     # Limpiar y ordenar IDs
     EXISTING_IDS=$(echo $EXISTING_IDS | tr ' ' '\n' | sort -nu | tr '\n' ' ')
     
-    log_info "IDs existentes encontrados: $EXISTING_IDS"
+    show_info "$TXT_EXISTING_IDS: $EXISTING_IDS"
     
     # Buscar el próximo ID disponible
     CONTAINER_ID=""
@@ -149,91 +338,119 @@ get_next_vmid() {
     done
     
     if [ -z "$CONTAINER_ID" ]; then
-        log_error "No se pudo encontrar un ID de contenedor disponible (100-999)"
-        log_error "IDs existentes: $EXISTING_IDS"
+        show_error "$TXT_NO_ID_AVAILABLE"
+        show_error "IDs existentes: $EXISTING_IDS"
         exit 1
     fi
     
-    log_success "ID de contenedor asignado: $CONTAINER_ID"
+    show_success "$TXT_ID_ASSIGNED: $CONTAINER_ID"
 }
 
-# Configurar parámetros del contenedor
+# =============================================================================
+# CONFIGURACION DEL CONTENEDOR
+# =============================================================================
+
 configure_container() {
-    log_step "Configurando parámetros del contenedor..."
-    
+    show_step "$TXT_STEP2"
+
     # Valores por defecto
-    CONTAINER_NAME="nginx-server"
-    CONTAINER_MEMORY="1024"
-    CONTAINER_DISK="8"
-    CONTAINER_CORES="2"
-    CONTAINER_PASSWORD="nginx123"
-    CONTAINER_STORAGE="local-lvm"
-    
+    DEFAULT_NAME="nginx-server"
+    DEFAULT_PASSWORD="nginx123"
+    DEFAULT_MEMORY="1024"
+    DEFAULT_DISK="8"
+    DEFAULT_CORES="2"
+    DEFAULT_STORAGE="local-lvm"
+
     # Detectar bridge de red
-    NETWORK_BRIDGE=$(ip route | grep default | awk '{print $5}' | head -1)
-    if [ -z "$NETWORK_BRIDGE" ]; then
-        NETWORK_BRIDGE="vmbr0"
+    DEFAULT_BRIDGE=$(ip route | grep default | awk '{print $5}' | head -1)
+    if [ -z "$DEFAULT_BRIDGE" ]; then
+        DEFAULT_BRIDGE="vmbr0"
     fi
-    
-    echo
-    log_info "Configuración del contenedor:"
-    echo -e "  ${WHITE}ID:${NC} $CONTAINER_ID"
-    echo -e "  ${WHITE}Nombre:${NC} $CONTAINER_NAME"
-    echo -e "  ${WHITE}Memoria:${NC} ${CONTAINER_MEMORY}MB"
-    echo -e "  ${WHITE}Disco:${NC} ${CONTAINER_DISK}GB"
-    echo -e "  ${WHITE}CPU Cores:${NC} $CONTAINER_CORES"
-    echo -e "  ${WHITE}Template:${NC} $SELECTED_TEMPLATE"
-    echo -e "  ${WHITE}Storage:${NC} $CONTAINER_STORAGE"
-    echo -e "  ${WHITE}Red:${NC} $NETWORK_BRIDGE"
-    echo -e "  ${WHITE}Contraseña:${NC} $CONTAINER_PASSWORD"
-    echo
-    
-    read -p "¿Deseas personalizar la configuración? (y/N): " customize
-    if [[ $customize =~ ^[Yy]$ ]]; then
-        customize_container
+
+    echo -e "${WHITE}$TXT_CONTAINER_CONFIG${NC}"
+    echo ""
+
+    read_input "$TXT_CONTAINER_ID" "$CONTAINER_ID" "CONTAINER_ID" "true"
+    read_input "$TXT_CONTAINER_NAME" "$DEFAULT_NAME" "CONTAINER_NAME" "true"
+    read_input "$TXT_ROOT_PASSWORD" "$DEFAULT_PASSWORD" "CONTAINER_PASSWORD" "true"
+
+    # Validar password minimo 5 caracteres
+    while [ ${#CONTAINER_PASSWORD} -lt 5 ]; do
+        show_error "$TXT_PASSWORD_SHORT"
+        read_input "$TXT_ROOT_PASSWORD" "$DEFAULT_PASSWORD" "CONTAINER_PASSWORD" "true"
+    done
+
+    # Verificar que ID no existe
+    if pct status $CONTAINER_ID &> /dev/null; then
+        show_error "Container ID $CONTAINER_ID already exists / El ID $CONTAINER_ID ya existe"
+        exit 1
     fi
 }
 
-# Personalizar configuración del contenedor
-customize_container() {
-    echo
-    log_info "Personalización de configuración:"
-    
-    read -p "Nombre del contenedor [$CONTAINER_NAME]: " input
-    [ -n "$input" ] && CONTAINER_NAME="$input"
-    
-    read -p "Memoria en MB [$CONTAINER_MEMORY]: " input
-    [ -n "$input" ] && CONTAINER_MEMORY="$input"
-    
-    read -p "Tamaño del disco en GB [$CONTAINER_DISK]: " input
-    [ -n "$input" ] && CONTAINER_DISK="$input"
-    
-    read -p "Número de CPU cores [$CONTAINER_CORES]: " input
-    [ -n "$input" ] && CONTAINER_CORES="$input"
-    
-    read -p "Contraseña root [$CONTAINER_PASSWORD]: " input
-    [ -n "$input" ] && CONTAINER_PASSWORD="$input"
-    
-    # Mostrar storages disponibles
-    echo
-    log_info "Storages disponibles:"
-    pvesh get /storage --output-format=table | grep -E "local|lvm"
-    echo
-    read -p "Storage para el contenedor [$CONTAINER_STORAGE]: " input
-    [ -n "$input" ] && CONTAINER_STORAGE="$input"
-    
-    # Mostrar bridges disponibles
-    echo
-    log_info "Bridges de red disponibles:"
-    ip link show | grep -E "vmbr|br" | awk '{print $2}' | sed 's/://'
-    echo
-    read -p "Bridge de red [$NETWORK_BRIDGE]: " input
-    [ -n "$input" ] && NETWORK_BRIDGE="$input"
+configure_resources() {
+    show_step "$TXT_STEP3"
+
+    echo -e "${WHITE}$TXT_AVAILABLE_STORAGES${NC}"
+    pvesm status 2>/dev/null | grep -E "active" | awk '{print "   - " $1}'
+    echo ""
+
+    read_input "$TXT_STORAGE" "$DEFAULT_STORAGE" "CONTAINER_STORAGE" "true"
+
+    echo ""
+    read_input "$TXT_MEMORY" "$DEFAULT_MEMORY" "CONTAINER_MEMORY" "true"
+    read_input "$TXT_DISK" "$DEFAULT_DISK" "CONTAINER_DISK" "true"
+    read_input "$TXT_CPU_CORES" "$DEFAULT_CORES" "CONTAINER_CORES" "true"
+
+    echo ""
+    echo -e "${WHITE}$TXT_AVAILABLE_BRIDGES${NC}"
+    ip link show type bridge 2>/dev/null | grep -E "^[0-9]" | awk -F: '{print "   - " $2}' | tr -d ' '
+    echo ""
+
+    read_input "$TXT_NETWORK_BRIDGE" "$DEFAULT_BRIDGE" "NETWORK_BRIDGE" "true"
 }
+
+# =============================================================================
+# CONFIRMACION
+# =============================================================================
+
+show_confirmation() {
+    show_step "$TXT_STEP4"
+
+    echo -e "${WHITE}$TXT_CONFIRM_TITLE${NC}"
+    echo ""
+    echo "   Container"
+    echo "   ├─ ID: $CONTAINER_ID"
+    echo "   ├─ Name: $CONTAINER_NAME"
+    echo "   ├─ Password: $CONTAINER_PASSWORD"
+    echo "   ├─ Template: $SELECTED_TEMPLATE"
+    echo "   └─ Storage: $CONTAINER_STORAGE"
+    echo ""
+    echo "   Resources"
+    echo "   ├─ Memory: ${CONTAINER_MEMORY}MB"
+    echo "   ├─ Disk: ${CONTAINER_DISK}GB"
+    echo "   └─ CPU: $CONTAINER_CORES cores"
+    echo ""
+    echo "   Network"
+    echo "   └─ Bridge: $NETWORK_BRIDGE (DHCP)"
+    echo ""
+
+    echo -ne "${GREEN}>${NC} $TXT_CONFIRM_CONTINUE [$TXT_CONFIRM_YES]: "
+    read confirm
+    confirm=${confirm:-Y}
+
+    if [[ ! "$confirm" =~ ^[SsYy]$ ]]; then
+        show_warning "$TXT_CANCELLED"
+        exit 0
+    fi
+}
+
+# =============================================================================
+# CREACION E INSTALACION
+# =============================================================================
 
 # Crear contenedor LXC
 create_container() {
-    log_step "Creando contenedor LXC..."
+    show_step_msg "$TXT_CREATING_CONTAINER"
     
     # Crear el contenedor
     pct create $CONTAINER_ID \
@@ -251,28 +468,28 @@ create_container() {
         --description "Servidor web Nginx automatizado - Creado por nginx-server installer"
     
     if [ $? -eq 0 ]; then
-        log_success "Contenedor creado exitosamente"
+        show_success "$TXT_CONTAINER_CREATED"
     else
-        log_error "Error al crear el contenedor"
+        show_error "$TXT_CONTAINER_ERROR"
         exit 1
     fi
     
     # Esperar a que el contenedor inicie
-    log_info "Esperando a que el contenedor inicie..."
+    show_info "$TXT_WAITING_START"
     sleep 10
     
     # Verificar que el contenedor está corriendo
     if pct status $CONTAINER_ID | grep -q "running"; then
-        log_success "Contenedor iniciado correctamente"
+        show_success "$TXT_CONTAINER_STARTED"
     else
-        log_error "El contenedor no pudo iniciarse"
+        show_error "$TXT_CONTAINER_NOT_STARTED"
         exit 1
     fi
 }
 
 # Instalar nginx en el contenedor
 install_nginx() {
-    log_step "Instalando y configurando Nginx..."
+    show_step_msg "$TXT_INSTALLING_NGINX"
     
     # Crear script de instalación temporal
     cat > /tmp/nginx-install.sh << 'EOF'
@@ -536,9 +753,9 @@ EOF
     pct exec $CONTAINER_ID -- /tmp/nginx-install.sh
     
     if [ $? -eq 0 ]; then
-        log_success "Nginx instalado y configurado correctamente"
+        show_success "$TXT_NGINX_INSTALLED"
     else
-        log_error "Error durante la instalación de nginx"
+        show_error "$TXT_NGINX_ERROR"
         exit 1
     fi
     
@@ -548,25 +765,25 @@ EOF
 
 # Instalar herramientas de gestión
 install_management_tools() {
-    log_step "Instalando herramientas de gestión..."
+    show_step_msg "$TXT_INSTALLING_TOOLS"
     
     # Ejecutar el instalador de herramientas dentro del contenedor
-    log_info "Descargando e instalando herramientas desde GitHub..."
+    show_info "Descargando e instalando herramientas desde GitHub..."
     
     pct exec $CONTAINER_ID -- wget -O /tmp/install-tools.sh https://raw.githubusercontent.com/MondoBoricua/nginx-server/master/install-tools.sh
     pct exec $CONTAINER_ID -- chmod +x /tmp/install-tools.sh
     pct exec $CONTAINER_ID -- /tmp/install-tools.sh
     
     # Ejecutar corrección automática de nginx
-    log_info "Ejecutando corrección automática de nginx..."
+    show_info "Ejecutando corrección automática de nginx..."
     pct exec $CONTAINER_ID -- wget -O /tmp/nginx-fix.sh https://raw.githubusercontent.com/MondoBoricua/nginx-server/master/utils/nginx-fix.sh
     pct exec $CONTAINER_ID -- chmod +x /tmp/nginx-fix.sh
     pct exec $CONTAINER_ID -- /tmp/nginx-fix.sh
     
     if [ $? -eq 0 ]; then
-        log_success "Herramientas de gestión instaladas correctamente"
+        show_success "$TXT_TOOLS_INSTALLED"
     else
-        log_warning "Error en instalación de herramientas, instalando versión básica..."
+        show_warning "$TXT_TOOLS_ERROR"
         
         # Fallback: instalar versión básica
         pct exec $CONTAINER_ID -- mkdir -p /opt/nginx-server
@@ -657,111 +874,134 @@ EOF
         rm -f /tmp/welcome.sh
     fi
     
-    log_success "Herramientas de gestión configuradas"
+    show_success "$TXT_TOOLS_INSTALLED"
 }
 
 # Obtener información del contenedor
 get_container_info() {
-    log_step "Obteniendo información del contenedor..."
+    show_step_msg "$TXT_GETTING_INFO"
     
     # Obtener IP del contenedor
     sleep 5
     CONTAINER_IP=$(pct exec $CONTAINER_ID -- hostname -I | awk '{print $1}')
     
     if [ -z "$CONTAINER_IP" ]; then
-        log_warning "No se pudo obtener la IP del contenedor"
+        show_warning "$TXT_IP_NOT_FOUND"
         CONTAINER_IP="Verificar con: pct exec $CONTAINER_ID -- hostname -I"
     fi
     
-    log_success "Información del contenedor obtenida"
+    show_success "$TXT_INFO_OBTAINED"
 }
+# =============================================================================
+# RESUMEN FINAL
+# =============================================================================
 
-# Mostrar resumen final
 show_summary() {
     clear
     echo -e "${GREEN}"
-    echo "╔══════════════════════════════════════════════════════════════╗"
-    echo "║                                                              ║"
-    echo "║               🎉 ¡INSTALACIÓN COMPLETADA! 🎉                 ║"
-    echo "║                                                              ║"
-    echo "╚══════════════════════════════════════════════════════════════╝"
+    echo "=================================================================="
+    echo "||                                                              ||"
+    echo "||              [OK] $TXT_INSTALL_COMPLETE              ||"
+    echo "||                                                              ||"
+    echo "=================================================================="
     echo -e "${NC}"
-    
-    echo -e "${WHITE}📋 Resumen de la Instalación${NC}"
-    echo -e "   ${CYAN}ID del Contenedor:${NC} $CONTAINER_ID"
-    echo -e "   ${CYAN}Nombre:${NC} $CONTAINER_NAME"
-    echo -e "   ${CYAN}IP Address:${NC} $CONTAINER_IP"
-    echo -e "   ${CYAN}Memoria:${NC} ${CONTAINER_MEMORY}MB"
-    echo -e "   ${CYAN}Disco:${NC} ${CONTAINER_DISK}GB"
-    echo -e "   ${CYAN}CPU Cores:${NC} $CONTAINER_CORES"
-    echo -e "   ${CYAN}Template:${NC} $SELECTED_TEMPLATE"
-    echo
-    
-    echo -e "${WHITE}🌐 Acceso al Servidor Web${NC}"
-    echo -e "   ${GREEN}URL:${NC} http://$CONTAINER_IP"
-    echo -e "   ${GREEN}Estado:${NC} Activo y funcionando"
-    echo
-    
-    echo -e "${WHITE}🖥️  Acceso al Contenedor${NC}"
-    echo -e "   ${CYAN}Consola Proxmox:${NC} pct enter $CONTAINER_ID"
-    echo -e "   ${CYAN}SSH:${NC} ssh root@$CONTAINER_IP"
-    echo -e "   ${CYAN}Contraseña:${NC} $CONTAINER_PASSWORD"
-    echo
-    
-    echo -e "${WHITE}🛠️  Próximos Pasos${NC}"
-    echo -e "   ${YELLOW}1.${NC} Acceder al contenedor: ${CYAN}pct enter $CONTAINER_ID${NC}"
-    echo -e "   ${YELLOW}2.${NC} Ver información: ${CYAN}nginx-info${NC}"
-    echo -e "   ${YELLOW}3.${NC} Gestionar sitios: ${CYAN}nginx-manager${NC}"
-    echo -e "   ${YELLOW}4.${NC} Configurar SSL: ${CYAN}ssl-manager${NC}"
-    echo
-    
-    echo -e "${WHITE}📚 Documentación${NC}"
-    echo -e "   ${CYAN}GitHub:${NC} https://github.com/MondoBoricua/nginx-server"
-    echo -e "   ${CYAN}Logs:${NC} /var/log/nginx/"
-    echo -e "   ${CYAN}Config:${NC} /etc/nginx/"
-    echo
-    
-    echo -e "${PURPLE}¡Gracias por usar nginx-server!${NC}"
-    echo -e "${PURPLE}Desarrollado con ❤️  para la comunidad de Proxmox${NC}"
-    echo -e "${PURPLE}Hecho en 🇵🇷 Puerto Rico con mucho ☕ café${NC}"
-    echo
+
+    echo ""
+    echo -e "${WHITE}$TXT_SUMMARY${NC}"
+    echo ""
+    echo "   Container"
+    echo "   ├─ ID: $CONTAINER_ID"
+    echo "   ├─ Hostname: $CONTAINER_NAME"
+    echo "   ├─ IP: $CONTAINER_IP"
+    echo "   ├─ Password: $CONTAINER_PASSWORD"
+    echo "   └─ Template: $SELECTED_TEMPLATE"
+    echo ""
+    echo "   Resources"
+    echo "   ├─ Memory: ${CONTAINER_MEMORY}MB"
+    echo "   ├─ Disk: ${CONTAINER_DISK}GB"
+    echo "   └─ CPU: $CONTAINER_CORES cores"
+    echo ""
+    echo "   $TXT_FEATURES"
+    echo "   ├─ [OK] $TXT_AUTOBOOT"
+    echo "   ├─ [OK] $TXT_AUTOLOGIN"
+    echo "   └─ [OK] $TXT_SERVICE_RUNNING"
+    echo ""
+
+    echo -e "${WHITE}$TXT_WEB_ACCESS${NC}"
+    echo "   └─ http://$CONTAINER_IP"
+    echo ""
+
+    echo -e "${WHITE}$TXT_CONTAINER_ACCESS${NC}"
+    echo "   ├─ $TXT_PROXMOX_CONSOLE: pct enter $CONTAINER_ID"
+    echo "   └─ SSH: ssh root@$CONTAINER_IP"
+    echo ""
+
+    echo -e "${WHITE}$TXT_NEXT_STEPS${NC}"
+    echo "   1. pct enter $CONTAINER_ID"
+    echo "   2. nginx-info"
+    echo "   3. nginx-manager"
+    echo "   4. ssl-manager"
+    echo ""
+
+    echo -e "${WHITE}$TXT_DOCUMENTATION${NC}"
+    echo "   └─ https://github.com/MondoBoricua/nginx-server"
+    echo ""
+
+    echo -e "${CYAN}$TXT_THANKS${NC}"
+    echo -e "${CYAN}$TXT_DEVELOPED${NC}"
+    echo -e "${CYAN}$TXT_MADE_IN${NC}"
+    echo ""
 }
 
-# Función principal
+# =============================================================================
+# FUNCION PRINCIPAL
+# =============================================================================
+
 main() {
+    # Seleccionar idioma primero
+    select_language
+
+    # Mostrar banner
     show_banner
-    
-    # Verificaciones iniciales
+
+    # PASO 1: Verificaciones
+    show_step "$TXT_STEP1"
     check_proxmox
     detect_templates
     get_next_vmid
+
+    # PASO 2: Configuracion del contenedor
     configure_container
-    
-    # Confirmación final
-    echo
-    log_warning "¿Continuar con la instalación?"
-    read -p "Presiona Enter para continuar o Ctrl+C para cancelar..."
-    
-    # Proceso de instalación
+
+    # PASO 3: Recursos y red
+    configure_resources
+
+    # PASO 4: Confirmacion
+    show_confirmation
+
+    # Proceso de instalacion
+    echo ""
+    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo -e "${WHITE}  INSTALLING / INSTALANDO...${NC}"
+    echo -e "${YELLOW}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${NC}"
+    echo ""
+
     create_container
     install_nginx
     install_management_tools
     get_container_info
-    
+
     # Mostrar resumen
     show_summary
-    
-    # Abrir navegador automáticamente si es posible
-    if command -v xdg-open &> /dev/null; then
-        xdg-open "http://$CONTAINER_IP" &>/dev/null &
-    fi
 }
 
-# Verificar si se ejecuta como root
+# =============================================================================
+# VERIFICAR ROOT Y EJECUTAR
+# =============================================================================
+
 if [ "$EUID" -ne 0 ]; then
-    log_error "Este script debe ejecutarse como root"
+    echo -e "\033[0;31m[ERROR]\033[0m This script must be run as root / Este script debe ejecutarse como root"
     exit 1
 fi
 
-# Ejecutar función principal
-main "$@" 
+main "$@"
