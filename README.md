@@ -41,6 +41,21 @@ chmod +x auto-install.sh
 ./auto-install.sh
 ```
 
+## 🔄 Actualizar Contenedor Existente
+
+¿Ya tienes un contenedor con Nginx? Puedes actualizarlo a la v3.0 con PHP:
+
+```bash
+# Ejecutar DENTRO del contenedor existente
+bash -c "$(wget -qO- https://raw.githubusercontent.com/MondoBoricua/nginx-server/master/update.sh)"
+```
+
+El script de actualización te permite:
+- Instalar PHP en contenedor existente
+- Actualizar herramientas de gestión
+- Actualizar página de bienvenida
+- Configurar Nginx para PHP
+
 ## 🎯 Proceso de Instalación
 
 El instalador te guía paso a paso:
