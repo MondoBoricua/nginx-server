@@ -720,16 +720,26 @@ SSLMANAGER
     # Actualizar aliases en .bashrc
     show_info "Actualizando aliases..."
 
-    # Remover aliases antiguos si existen
-    sed -i '/# Nginx + PHP Server Aliases/,/^$/d' /root/.bashrc 2>/dev/null
-    sed -i '/# PHP Aliases/,/^$/d' /root/.bashrc 2>/dev/null
-    sed -i '/alias nginx-/d' /root/.bashrc 2>/dev/null
-    sed -i '/alias php-/d' /root/.bashrc 2>/dev/null
-    sed -i '/alias ssl-manager/d' /root/.bashrc 2>/dev/null
-    sed -i '/Show welcome on login/d' /root/.bashrc 2>/dev/null
-    sed -i '/\/opt\/nginx-server\/welcome.sh/d' /root/.bashrc 2>/dev/null
+    # Remover aliases antiguos si existen (linea por linea, mas seguro)
+    grep -v "# Nginx + PHP Server Aliases" /root/.bashrc > /tmp/.bashrc.tmp && mv /tmp/.bashrc.tmp /root/.bashrc
+    grep -v "# PHP Aliases" /root/.bashrc > /tmp/.bashrc.tmp && mv /tmp/.bashrc.tmp /root/.bashrc
+    grep -v "alias nginx-info=" /root/.bashrc > /tmp/.bashrc.tmp && mv /tmp/.bashrc.tmp /root/.bashrc
+    grep -v "alias nginx-manager=" /root/.bashrc > /tmp/.bashrc.tmp && mv /tmp/.bashrc.tmp /root/.bashrc
+    grep -v "alias nginx-logs=" /root/.bashrc > /tmp/.bashrc.tmp && mv /tmp/.bashrc.tmp /root/.bashrc
+    grep -v "alias nginx-errors=" /root/.bashrc > /tmp/.bashrc.tmp && mv /tmp/.bashrc.tmp /root/.bashrc
+    grep -v "alias nginx-test=" /root/.bashrc > /tmp/.bashrc.tmp && mv /tmp/.bashrc.tmp /root/.bashrc
+    grep -v "alias nginx-reload=" /root/.bashrc > /tmp/.bashrc.tmp && mv /tmp/.bashrc.tmp /root/.bashrc
+    grep -v "alias nginx-restart=" /root/.bashrc > /tmp/.bashrc.tmp && mv /tmp/.bashrc.tmp /root/.bashrc
+    grep -v "alias nginx-status=" /root/.bashrc > /tmp/.bashrc.tmp && mv /tmp/.bashrc.tmp /root/.bashrc
+    grep -v "alias ssl-manager=" /root/.bashrc > /tmp/.bashrc.tmp && mv /tmp/.bashrc.tmp /root/.bashrc
+    grep -v "alias php-manager=" /root/.bashrc > /tmp/.bashrc.tmp && mv /tmp/.bashrc.tmp /root/.bashrc
+    grep -v "alias php-status=" /root/.bashrc > /tmp/.bashrc.tmp && mv /tmp/.bashrc.tmp /root/.bashrc
+    grep -v "alias php-restart=" /root/.bashrc > /tmp/.bashrc.tmp && mv /tmp/.bashrc.tmp /root/.bashrc
+    grep -v "alias php-logs=" /root/.bashrc > /tmp/.bashrc.tmp && mv /tmp/.bashrc.tmp /root/.bashrc
+    grep -v "# Show welcome on login" /root/.bashrc > /tmp/.bashrc.tmp && mv /tmp/.bashrc.tmp /root/.bashrc
+    grep -v "/opt/nginx-server/welcome.sh" /root/.bashrc > /tmp/.bashrc.tmp && mv /tmp/.bashrc.tmp /root/.bashrc
 
-    # Agregar nuevos aliases
+    # Agregar nuevos aliases al final
     cat >> /root/.bashrc << 'BASHALIASES'
 
 # Nginx + PHP Server Aliases
