@@ -397,7 +397,18 @@ fi
 echo
 
 echo -e "${WHITE}Quick Access${NC}"
-echo -e "   ${CYAN}Web:${NC} http://$IP_ADDRESS"
+for site in /etc/nginx/sites-enabled/*; do
+    if [ -f "$site" ]; then
+        site_name=$(basename "$site")
+        site_port=$(grep -E "^\s*listen\s+" "$site" 2>/dev/null | head -1 | grep -oE '[0-9]+' | head -1)
+        site_port=${site_port:-80}
+        if [ "$site_port" = "80" ]; then
+            echo -e "   ${CYAN}${site_name}:${NC} http://$IP_ADDRESS"
+        else
+            echo -e "   ${CYAN}${site_name}:${NC} http://$IP_ADDRESS:$site_port"
+        fi
+    fi
+done
 if [ "$PHP_INSTALLED" = "yes" ]; then
     echo -e "   ${CYAN}PHP Info:${NC} http://$IP_ADDRESS/info.php"
 fi
