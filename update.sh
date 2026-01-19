@@ -646,9 +646,18 @@ while true; do
             fi
 
             if [ "$site_type" = "1" ]; then
-                # Crear por puerto
-                echo -ne "Port number (e.g. 8080): "
+                # Crear por puerto - detectar siguiente puerto disponible
+                last_port=$(ls /etc/nginx/sites-available/ 2>/dev/null | grep -oP 'site-\K[0-9]+' | sort -n | tail -1)
+                if [ -n "$last_port" ]; then
+                    next_port=$((last_port + 1))
+                else
+                    next_port=8080
+                fi
+
+                echo -ne "Port number [${next_port}]: "
                 read port
+                port=${port:-$next_port}
+
                 if [ -z "$port" ]; then
                     echo -e "${RED}[ERROR]${NC} Port is required"
                     read -p "Press Enter to continue..."
