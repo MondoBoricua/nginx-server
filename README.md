@@ -1,11 +1,20 @@
-# 🌐 Nginx Web Server para Proxmox LXC
+# 🌐 Nginx + PHP Web Server para Proxmox LXC
 
-Un script automatizado para crear y configurar servidores web Nginx en contenedores LXC de Proxmox, perfecto para hospedar sitios web, aplicaciones y servicios web sin complicaciones.
+Un script automatizado para crear y configurar servidores web **Nginx + PHP** en contenedores LXC de Proxmox, perfecto para hospedar sitios web, aplicaciones PHP, WordPress, Laravel y servicios web sin complicaciones.
+
+## ✨ Novedades v3.0
+
+- 🐘 **PHP-FPM opcional** con versiones 8.1, 8.2 y 8.3
+- 📦 **Composer** instalado globalmente
+- ⚡ **Configuración PHP optimizada** para producción
+- 🛠️ **php-manager** - Nueva herramienta de gestión PHP
+- 🎨 **Página de bienvenida dinámica** con info del sistema en tiempo real
+- 🔒 **Security headers** configurados por defecto
 
 ## 📋 Requisitos
 
-* **Proxmox VE** (cualquier versión reciente)
-* **Template LXC** (Ubuntu 22.04 o Debian 12 - se detecta automáticamente)
+* **Proxmox VE 8.x o 9.x**
+* **Template LXC** (Ubuntu 22.04/24.04 o Debian 12/13 - se detecta automáticamente)
 * **Acceso de red** para el contenedor
 * **Dominio o IP** para acceder al servidor web
 
@@ -15,7 +24,7 @@ Un script automatizado para crear y configurar servidores web Nginx en contenedo
 
 ```bash
 # Ejecutar desde el HOST Proxmox (no desde un contenedor)
-wget -O - https://raw.githubusercontent.com/MondoBoricua/nginx-server/master/auto-install.sh | bash
+bash -c "$(wget -qO- https://raw.githubusercontent.com/MondoBoricua/nginx-server/master/auto-install.sh)"
 ```
 
 ### Método 2: Instalación Manual
@@ -32,240 +41,181 @@ chmod +x auto-install.sh
 ./auto-install.sh
 ```
 
+## 🎯 Proceso de Instalación
+
+El instalador te guía paso a paso:
+
+```
+STEP 1/5: Verificando Entorno
+STEP 2/5: Configuración del Contenedor
+STEP 3/5: Recursos y Red
+STEP 4/5: Configuración de PHP    ← ¡NUEVO!
+STEP 5/5: Confirmación
+```
+
+### Configuración de PHP (Paso 4)
+
+```
+PHP Configuration
+Recommended for most web applications
+
+> Install PHP? [y/N]: y
+
+Available PHP versions:
+   1) PHP 8.1 (LTS - stable)
+   2) PHP 8.2 (recommended)
+   3) PHP 8.3 (latest)
+
+> PHP Version [2]: 2
+[OK] PHP 8.2 selected
+```
+
 ## ✨ Características
 
+### 🌐 Servidor Web
 * 🔧 **Instalación completamente automatizada**
 * 🌐 **Nginx optimizado para producción**
-* 📂 **Gestión fácil de sitios web**
-* 🔒 **Soporte SSL/TLS con Let's Encrypt**
-* 📊 **Panel de información del servidor**
-* 🛠️ **Herramientas de gestión integradas**
-* 📋 **Logs centralizados y monitoreo**
-* 🔄 **Backup automático de configuraciones**
-* 🎨 **Sitio web de ejemplo incluido**
-* 🔐 **Configuración de seguridad avanzada**
+* 🔒 **Security headers** (X-Frame-Options, X-Content-Type-Options, X-XSS-Protection)
+* 📁 **Gzip compression** habilitado
+* 🚀 **Static file caching** (30 días)
+* 🛡️ **Bloqueo de archivos sensibles** (.env, .log, .ini, .htaccess)
+
+### 🐘 PHP (Opcional)
+* **PHP-FPM** con versiones 8.1, 8.2, 8.3
+* **Módulos incluidos**: mysql, pgsql, sqlite3, curl, gd, mbstring, xml, zip, bcmath, intl, opcache, soap, redis, imagick
+* **Composer** instalado globalmente
+* **Configuración optimizada**:
+  - `upload_max_filesize`: 64M
+  - `post_max_size`: 64M
+  - `memory_limit`: 256M
+  - `max_execution_time`: 300s
+  - OPcache habilitado
+
+### 🔐 Seguridad
+* 🔒 **SSL/TLS** con Let's Encrypt (Certbot)
+* 🛡️ **UFW Firewall** configurado
+* 🚫 **Fail2ban** protección contra ataques
+* 🔑 **expose_php = Off** por seguridad
+* 🔒 **cgi.fix_pathinfo = 0** contra path traversal
+
+### 🛠️ Herramientas de Gestión
+* `nginx-info` - Panel de información del servidor
+* `nginx-manager` - Gestión de sitios web
+* `ssl-manager` - Gestión de certificados SSL
+* `php-manager` - Gestión de PHP (nuevo!)
 
 ## 🎯 Lo que Instala
 
-* **Nginx** - Servidor web principal
-* **PHP-FPM** - Procesamiento de PHP (opcional)
-* **Certbot** - Certificados SSL gratuitos
-* **UFW** - Firewall configurado
-* **Fail2ban** - Protección contra ataques
-* **Logrotate** - Gestión de logs
-* **Herramientas de gestión** - Scripts personalizados
+| Paquete | Descripción |
+|---------|-------------|
+| **Nginx** | Servidor web principal |
+| **PHP-FPM** | Procesamiento PHP (opcional) |
+| **Composer** | Gestor de dependencias PHP |
+| **Certbot** | Certificados SSL gratuitos |
+| **UFW** | Firewall configurado |
+| **Fail2ban** | Protección contra ataques |
+| **Git, Curl, Wget** | Herramientas esenciales |
+| **htop, tree, nano** | Utilidades de sistema |
 
-## 🏗️ Estructura del Proyecto
+## 🖥️ Comandos Disponibles
 
-```
-nginx-server/
-├── auto-install.sh         # Instalador automático principal
-├── install.sh             # Script de instalación en contenedor
-├── nginx-manager.sh        # Herramienta de gestión de sitios
-├── ssl-manager.sh          # Gestor de certificados SSL
-├── welcome.sh              # Pantalla de bienvenida
-├── backup-config.sh        # Script de respaldo
-├── configs/
-│   ├── nginx.conf          # Configuración principal de nginx
-│   ├── default-site.conf   # Configuración de sitio por defecto
-│   └── ssl-template.conf   # Template para sitios SSL
-├── sites/
-│   └── default/            # Sitio web de ejemplo
-│       ├── index.html
-│       ├── css/
-│       └── js/
-└── utils/
-    ├── security.sh         # Configuraciones de seguridad
-    └── monitoring.sh       # Herramientas de monitoreo
-```
-
-## 🔧 Configuración Automática
-
-El script configura automáticamente:
-
-* **Nginx** con configuración optimizada
-* **Virtual hosts** para múltiples sitios
-* **SSL/TLS** con certificados gratuitos
-* **Firewall** con reglas de seguridad
-* **Logs** centralizados y rotación
-* **Backup** automático de configuraciones
-* **Monitoreo** de servicios
-
-## 🌐 Gestión de Sitios Web
-
-### Crear Nuevo Sitio
-
+### Nginx
 ```bash
-# Usar el gestor integrado
-nginx-manager create-site ejemplo.com
-
-# Con SSL automático
-nginx-manager create-site ejemplo.com --ssl
+nginx-info      # Mostrar información del servidor
+nginx-manager   # Gestionar sitios web
+nginx-status    # Ver estado del servicio
+nginx-test      # Probar configuración
+nginx-reload    # Recargar configuración
+nginx-restart   # Reiniciar servicio
+nginx-logs      # Ver logs de acceso
+nginx-errors    # Ver logs de errores
 ```
 
-### Gestionar Sitios Existentes
-
+### PHP (si está instalado)
 ```bash
-# Listar sitios
-nginx-manager list-sites
-
-# Habilitar sitio
-nginx-manager enable-site ejemplo.com
-
-# Deshabilitar sitio
-nginx-manager disable-site ejemplo.com
-
-# Eliminar sitio
-nginx-manager remove-site ejemplo.com
+php-manager     # Gestionar configuración PHP
+php-status      # Ver estado de PHP-FPM
+php-restart     # Reiniciar PHP-FPM
+php-logs        # Ver logs de PHP-FPM
+composer        # Gestor de dependencias
 ```
 
-## 🔒 Certificados SSL
-
-### Obtener Certificado SSL
-
+### SSL
 ```bash
-# SSL para un dominio
-ssl-manager get-cert ejemplo.com
-
-# SSL para múltiples dominios
-ssl-manager get-cert ejemplo.com www.ejemplo.com
+ssl-manager     # Gestionar certificados SSL
 ```
 
-### Renovar Certificados
+## 🛠️ php-manager
 
-```bash
-# Renovación automática (configurada en cron)
-ssl-manager renew-all
+Nueva herramienta interactiva para gestionar PHP:
 
-# Renovar certificado específico
-ssl-manager renew ejemplo.com
+```
+================================================
+           PHP Manager - v1.0
+================================================
+
+   1) Show PHP info
+   2) Show installed modules
+   3) Restart PHP-FPM
+   4) View PHP-FPM status
+   5) Edit php.ini
+   6) View PHP-FPM logs
+   7) Clear OPcache
+   8) Update Composer
+   0) Exit
 ```
 
-## 🖥️ Acceso al Contenedor
+## 📂 Estructura de Directorios
 
-### Consola Proxmox (Recomendado)
-
-```bash
-# Acceso directo sin contraseña
-pct enter [ID_CONTENEDOR]
+```
+/var/www/html/           # Directorio web principal
+/etc/nginx/              # Configuración Nginx
+├── sites-available/     # Sitios disponibles
+├── sites-enabled/       # Sitios habilitados
+└── nginx.conf           # Configuración principal
+/etc/php/8.x/            # Configuración PHP
+├── fpm/php.ini          # PHP-FPM config
+└── fpm/pool.d/www.conf  # Pool config
+/var/log/nginx/          # Logs de Nginx
+/opt/nginx-server/       # Scripts de gestión
 ```
 
-### SSH
+## 🌐 Páginas de Prueba
 
-```bash
-# Acceso por SSH
-ssh root@IP_DEL_CONTENEDOR
-# Contraseña por defecto: nginx123
-```
+### Con PHP instalado
+- `http://IP/` - Página de bienvenida dinámica con info del sistema
+- `http://IP/info.php` - phpinfo() completo
 
-## 📊 Monitoreo y Logs
-
-### Ver Estado del Servidor
-
-```bash
-# Información completa del servidor
-nginx-info
-
-# Estado de nginx
-systemctl status nginx
-
-# Procesos activos
-nginx-manager status
-```
-
-### Logs del Sistema
-
-```bash
-# Logs de acceso
-tail -f /var/log/nginx/access.log
-
-# Logs de errores
-tail -f /var/log/nginx/error.log
-
-# Logs del sistema
-journalctl -u nginx -f
-```
-
-## 🛠️ Solución de Problemas
-
-### Problemas Comunes
-
-#### Nginx no inicia
-
-```bash
-# Verificar configuración
-nginx -t
-
-# Ver logs de error
-journalctl -u nginx --no-pager
-
-# Reiniciar servicio
-systemctl restart nginx
-```
-
-#### Problemas de permisos
-
-```bash
-# Corregir permisos de sitios web
-chown -R www-data:www-data /var/www/
-chmod -R 755 /var/www/
-```
-
-#### Problemas de SSL
-
-```bash
-# Verificar certificados
-ssl-manager check-cert ejemplo.com
-
-# Renovar certificado
-ssl-manager renew ejemplo.com
-```
-
-## 🔧 Personalización
-
-### Agregar Módulos de Nginx
-
-```bash
-# Instalar módulos adicionales
-apt install nginx-module-geoip nginx-module-image-filter
-
-# Habilitar en configuración
-echo "load_module modules/ngx_http_geoip_module.so;" >> /etc/nginx/nginx.conf
-```
-
-### Configurar PHP
-
-```bash
-# Instalar PHP-FPM
-apt install php-fpm php-mysql php-curl php-gd php-mbstring
-
-# Configurar en nginx
-nginx-manager enable-php ejemplo.com
-```
-
-## 🔄 Backup y Restauración
-
-### Crear Backup
-
-```bash
-# Backup completo
-backup-config.sh full
-
-# Solo configuraciones
-backup-config.sh config
-
-# Solo sitios web
-backup-config.sh sites
-```
-
-### Restaurar Backup
-
-```bash
-# Restaurar desde backup
-backup-config.sh restore backup-YYYYMMDD.tar.gz
-```
+### Sin PHP
+- `http://IP/` - Página de bienvenida HTML estática
 
 ## 📝 Configuraciones de Ejemplo
+
+### Sitio PHP (Laravel, WordPress, etc.)
+
+```nginx
+server {
+    listen 80;
+    server_name ejemplo.com www.ejemplo.com;
+    root /var/www/ejemplo.com/public;
+    index index.php index.html;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/var/run/php/php8.2-fpm.sock;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+}
+```
 
 ### Sitio Web Estático
 
@@ -282,53 +232,86 @@ server {
 }
 ```
 
-### Aplicación PHP
-
-```nginx
-server {
-    listen 80;
-    server_name app.ejemplo.com;
-    root /var/www/app.ejemplo.com;
-    index index.php index.html;
-
-    location ~ \.php$ {
-        fastcgi_pass unix:/var/run/php/php8.1-fpm.sock;
-        fastcgi_index index.php;
-        include fastcgi_params;
-    }
-}
-```
-
-## 🔐 Seguridad
-
-El script configura automáticamente:
-
-* **Fail2ban** - Protección contra ataques de fuerza bruta
-* **UFW Firewall** - Solo puertos necesarios abiertos
-* **SSL/TLS** - Cifrado en tránsito
-* **Headers de seguridad** - Protección contra XSS, clickjacking
-* **Rate limiting** - Protección contra DDoS básico
-
-## 📈 Optimización
-
-### Para Alto Tráfico
+## 🔒 Obtener Certificado SSL
 
 ```bash
-# Optimizar configuración
-nginx-manager optimize-performance
+# Ejecutar ssl-manager
+ssl-manager
 
-# Habilitar caché
-nginx-manager enable-cache ejemplo.com
+# O directamente con certbot
+certbot --nginx -d ejemplo.com -d www.ejemplo.com
 ```
 
-### Para Desarrollo
+## 🖥️ Acceso al Contenedor
 
+### Consola Proxmox (Recomendado)
 ```bash
-# Modo desarrollo
-nginx-manager dev-mode ejemplo.com
+pct enter [ID_CONTENEDOR]
+```
 
-# Deshabilitar caché
-nginx-manager disable-cache ejemplo.com
+### SSH
+```bash
+ssh root@IP_DEL_CONTENEDOR
+# Contraseña por defecto: nginx123
+```
+
+## 🛠️ Solución de Problemas
+
+### Nginx no inicia
+```bash
+nginx -t                    # Verificar configuración
+journalctl -u nginx -n 50   # Ver logs
+systemctl restart nginx     # Reiniciar
+```
+
+### PHP-FPM no responde
+```bash
+php-status                  # Ver estado
+php-restart                 # Reiniciar
+php-logs                    # Ver logs
+```
+
+### Problemas de permisos
+```bash
+chown -R www-data:www-data /var/www/
+chmod -R 755 /var/www/
+```
+
+### Limpiar OPcache
+```bash
+php-manager   # Opción 7
+# O crear archivo para limpiar via web
+```
+
+## 📊 Resumen de Instalación
+
+Al finalizar, verás un resumen como este:
+
+```
+==================================================================
+||              [OK] INSTALLATION COMPLETED!                    ||
+==================================================================
+
+   Container
+   ├─ ID: 100
+   ├─ Hostname: nginx-server
+   ├─ IP: 192.168.1.100
+   ├─ Password: nginx123
+   └─ Template: local:vztmpl/ubuntu-24.04...
+
+   Software
+   ├─ [OK] Nginx
+   ├─ [OK] PHP 8.2 (PHP-FPM)
+   └─ [OK] Composer
+
+   Features
+   ├─ [OK] Autoboot enabled
+   ├─ [OK] Autologin configured
+   └─ [OK] Service running
+
+Web Server Access
+   ├─ http://192.168.1.100
+   └─ http://192.168.1.100/info.php (PHP Info)
 ```
 
 ## 🤝 Contribuir
@@ -337,7 +320,7 @@ nginx-manager disable-cache ejemplo.com
 
 1. Haz fork del repositorio
 2. Crea tu rama de feature (`git checkout -b feature/mejora-increible`)
-3. Commit tus cambios (`git commit -am 'Añade mejora increíble'`)
+3. Commit tus cambios (`git commit -am '🚀 Añade mejora increíble'`)
 4. Push a la rama (`git push origin feature/mejora-increible`)
 5. Crea un Pull Request
 
@@ -356,9 +339,11 @@ Si este script te ayudó, ¡dale una estrella al repo! ⭐
 ## 🔗 Recursos Adicionales
 
 * [Documentación oficial de Nginx](https://nginx.org/en/docs/)
+* [Documentación de PHP](https://www.php.net/docs.php)
 * [Guía de Proxmox LXC](https://pve.proxmox.com/wiki/Linux_Container)
 * [Let's Encrypt](https://letsencrypt.org/)
+* [Composer](https://getcomposer.org/)
 
 ---
 
-*Basado en el exitoso proyecto [proxmox-samba](https://github.com/MondoBoricua/proxmox-samba)* 
+*Basado en el exitoso proyecto [proxmox-samba](https://github.com/MondoBoricua/proxmox-samba)*
