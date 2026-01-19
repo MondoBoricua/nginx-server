@@ -555,12 +555,43 @@ show_menu() {
 }
 
 list_sites() {
+    local IP=$(hostname -I | awk '{print $1}')
+
     echo ""
-    echo -e "${WHITE}Available sites:${NC}"
-    ls -la /etc/nginx/sites-available/
+    echo -e "${WHITE}Enabled Sites:${NC}"
     echo ""
-    echo -e "${WHITE}Enabled sites:${NC}"
-    ls -la /etc/nginx/sites-enabled/
+
+    for site in /etc/nginx/sites-enabled/*; do
+        if [ -f "$site" ]; then
+            local name=$(basename "$site")
+            local port=$(grep -E "^\s*listen\s+" "$site" | head -1 | grep -oE '[0-9]+' | head -1)
+            port=${port:-80}
+            local root=$(grep -E "^\s*root\s+" "$site" | head -1 | awk '{print $2}' | tr -d ';')
+
+            if [ "$port" = "80" ]; then
+                echo -e "   ${GREEN}[ON]${NC} $name"
+                echo -e "        ${CYAN}http://${IP}${NC}"
+            else
+                echo -e "   ${GREEN}[ON]${NC} $name"
+                echo -e "        ${CYAN}http://${IP}:${port}${NC}"
+            fi
+            [ -n "$root" ] && echo -e "        Root: $root"
+            echo ""
+        fi
+    done
+
+    echo -e "${WHITE}Available (disabled):${NC}"
+    echo ""
+    for site in /etc/nginx/sites-available/*; do
+        if [ -f "$site" ]; then
+            local name=$(basename "$site")
+            if [ ! -f "/etc/nginx/sites-enabled/$name" ]; then
+                local port=$(grep -E "^\s*listen\s+" "$site" | head -1 | grep -oE '[0-9]+' | head -1)
+                port=${port:-80}
+                echo -e "   ${RED}[OFF]${NC} $name (port $port)"
+            fi
+        fi
+    done
     echo ""
 }
 
