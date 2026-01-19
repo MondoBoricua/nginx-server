@@ -631,14 +631,13 @@ while true; do
             read -p "Press Enter to continue..."
             ;;
         4)
-            echo -ne "Domain name: "
-            read domain
-            echo -ne "Document root [/var/www/$domain]: "
-            read docroot
-            docroot=${docroot:-/var/www/$domain}
-
-            mkdir -p $docroot
-            chown -R www-data:www-data $docroot
+            echo ""
+            echo "   1) Create site by PORT (recommended for multiple sites)"
+            echo "   2) Create site by DOMAIN"
+            echo ""
+            echo -ne "${GREEN}>${NC} Option [1]: "
+            read site_type
+            site_type=${site_type:-1}
 
             # Detectar PHP
             PHP_SOCK=""
@@ -646,7 +645,96 @@ while true; do
                 PHP_SOCK=$(ls /var/run/php/php*-fpm.sock | head -1)
             fi
 
-            cat > /etc/nginx/sites-available/$domain << SITECONF
+            if [ "$site_type" = "1" ]; then
+                # Crear por puerto
+                echo -ne "Port number (e.g. 8080): "
+                read port
+                if [ -z "$port" ]; then
+                    echo -e "${RED}[ERROR]${NC} Port is required"
+                    read -p "Press Enter to continue..."
+                    continue
+                fi
+
+                site_name="site-${port}"
+                docroot="/var/www/${site_name}"
+
+                mkdir -p $docroot
+                chown -R www-data:www-data $docroot
+
+                # Crear index.html por defecto
+                cat > $docroot/index.html << INDEXHTML
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Site ${port}</title>
+    <style>
+        body { font-family: Arial, sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: linear-gradient(135deg, #1a1a2e, #16213e); color: white; }
+        .container { text-align: center; }
+        h1 { font-size: 3rem; }
+        p { color: #9ca3af; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Site :${port}</h1>
+        <p>Your site is ready at port ${port}</p>
+        <p>Document root: ${docroot}</p>
+    </div>
+</body>
+</html>
+INDEXHTML
+
+                cat > /etc/nginx/sites-available/$site_name << SITECONF
+server {
+    listen ${port};
+    listen [::]:${port};
+
+    root ${docroot};
+    index index.php index.html index.htm;
+
+    server_name _;
+
+    location / {
+        try_files \$uri \$uri/ /index.php?\$query_string;
+    }
+
+    location ~ \.php\$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:${PHP_SOCK:-/var/run/php/php-fpm.sock};
+        fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
+        include fastcgi_params;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+}
+SITECONF
+
+                # Abrir puerto en firewall
+                ufw allow ${port}/tcp 2>/dev/null
+
+                echo -e "${GREEN}[OK]${NC} Site created: $site_name"
+                local IP=$(hostname -I | awk '{print $1}')
+                echo -e "${CYAN}URL: http://${IP}:${port}${NC}"
+                echo -e "Root: $docroot"
+
+                ln -sf /etc/nginx/sites-available/$site_name /etc/nginx/sites-enabled/
+                nginx -t && systemctl reload nginx
+                echo -e "${GREEN}[OK]${NC} Site enabled"
+
+            else
+                # Crear por dominio
+                echo -ne "Domain name: "
+                read domain
+                echo -ne "Document root [/var/www/$domain]: "
+                read docroot
+                docroot=${docroot:-/var/www/$domain}
+
+                mkdir -p $docroot
+                chown -R www-data:www-data $docroot
+
+                cat > /etc/nginx/sites-available/$domain << SITECONF
 server {
     listen 80;
     server_name $domain www.$domain;
@@ -668,12 +756,13 @@ server {
 }
 SITECONF
 
-            echo -e "${GREEN}[OK]${NC} Site created: /etc/nginx/sites-available/$domain"
-            echo -ne "Enable now? (y/n): "
-            read enable
-            if [[ "$enable" =~ ^[Yy]$ ]]; then
-                ln -sf /etc/nginx/sites-available/$domain /etc/nginx/sites-enabled/
-                nginx -t && systemctl reload nginx
+                echo -e "${GREEN}[OK]${NC} Site created: /etc/nginx/sites-available/$domain"
+                echo -ne "Enable now? (y/n): "
+                read enable
+                if [[ "$enable" =~ ^[Yy]$ ]]; then
+                    ln -sf /etc/nginx/sites-available/$domain /etc/nginx/sites-enabled/
+                    nginx -t && systemctl reload nginx
+                fi
             fi
             read -p "Press Enter to continue..."
             ;;
